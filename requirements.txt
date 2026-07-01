@@ -1,0 +1,28 @@
+#--- FastAPI Core ---
+fastapi[all]           # FastAPI + uvicorn + form-data + email-validator + templating
+
+# --- Database ORM & Migrations ---
+sqlalchemy             # ORM
+alembic                # Migrations
+
+# --- Database Drivers (Sync & Async options) ---
+# SQLite (built-in with Python, no extra driver needed)
+psycopg2-binary        # PostgreSQL (sync)
+asyncpg                # PostgreSQL (async)
+
+# aiomysql works for MariaDB async too  
+  
+
+# --- Security & Auth ---
+passlib[bcrypt]        # Password hashing
+python-jose[cryptography]  # JWT authentication (signing/verifying tokens)
+
+# --- Config & Validation ---
+pydantic-settings      # Load environment variables / settings
+python-multipart       # Needed for file uploads
+email-validator        # Email validation
+
+# --- Extras ---
+httpx                  # Async HTTP client for external API calls
+pytest                 # Testing framework
+argon2-cffi           # Alternative password hashing algorithm (optional)

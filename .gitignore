@@ -1,0 +1,32 @@
+# Environments
+.env
+.venv
+venv/
+env/
+ENV/
+
+# Database 
+*.db
+*.sqlite
+*.sqlite3
+paycycle.db
+hackathon_prototype.db
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
