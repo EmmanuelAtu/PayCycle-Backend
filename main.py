@@ -16,6 +16,10 @@ def root():
 def health():
     return {"status": "ok", "service": "paycycle"}
 
+@app.head("/health")
+def health():
+    return {"status": "ok", "service": "paycycle"}
+
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi import Request
