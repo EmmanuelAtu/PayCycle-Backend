@@ -180,7 +180,7 @@ class NombaClient:
         payload = {
             "order": {
                 "orderReference": order_ref,
-                "amount": utils.to_kobo(amount),   # ← kobo conversion here
+                "amount": amount,   # ← kobo conversion here
                 "currency": "NGN",
                 "callbackUrl": callback_url,
                 "customerEmail": customer_email,
@@ -231,7 +231,7 @@ class NombaClient:
             "POST",
             "/tokenized-card/charge",
             json={
-                "amount": utils.to_kobo(amount),   # ← kobo conversion here
+                "amount": amount,   # ← kobo conversion here
                 "currency": "NGN",
                 "cardId": token_key,
                 "customerId": nomba_customer_id,
