@@ -7,7 +7,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = ""
     ALGORITHM: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30 
-
+    APP_URL: str = "http://localhost:8000"
+    
+    NOMBA_SUB_ACCOUNT_ID: str ="" 
     NOMBA_CLIENT_ID: str = ""
     NOMBA_CLIENT_SECRET: str = ""
     NOMBA_ACCOUNT_ID: str = ""

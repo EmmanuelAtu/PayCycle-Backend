@@ -17,6 +17,7 @@ class BillingFrequency(str, enum.Enum):
     yearly = "yearly"
 
 class SubscriptionStatus(str, enum.Enum):
+    pending = "pending"
     active = "active"
     paused = "paused"
     cancelled = "cancelled"
@@ -55,9 +56,10 @@ class Plan(Base, CommonMixin):
     name = Column(String, nullable=False)
     amount = Column(Integer, nullable=False)  # Stored in Kobo/Cents
     billing_frequency = Column(Enum(BillingFrequency), nullable=False)
-    
+    billing_day = Column(Integer, nullable=True)  # e.g., 15 for the 15th of each month
     provider_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-
+    # When plan is created, generate a unique join token
+    join_token = Column(String, unique=True, index=True, nullable=True)
     provider = relationship("User", back_populates="plans")
     subscriptions = relationship("Subscription", back_populates="plan", cascade="all, delete-orphan")
 
@@ -93,6 +95,7 @@ class Subscription(Base, CommonMixin):
 
     nomba_customer_id = Column(String, nullable=True)  # needed for token charge API
     checkout_reference = Column(String, nullable=True, index=True)  # match webhook to subscription
+    last_charged_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class Transaction(Base, CommonMixin):
@@ -104,7 +107,7 @@ class Transaction(Base, CommonMixin):
     amount = Column(Integer, nullable=False)
     status = Column(Enum(TransactionStatus), default=TransactionStatus.pending, nullable=False)
     reference = Column(String, unique=True, index=True, nullable=False)  # Nomba transaction reference
-
+    failure_reason = Column(String, nullable=True)
     subscription = relationship("Subscription", back_populates="transactions")
 
 class ProcessedEvent(Base):

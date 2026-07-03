@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PayCycle — Subscribe to Plan</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:     #0A6E4A;
+      --green-mid: #12875C;
+      --green-bg:  #EAF5F0;
+      --black:     #0D0D0D;
+      --grey:      #6B7280;
+      --border:    #E5E7EB;
+      --white:     #FFFFFF;
+      --error:     #DC2626;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #F6F8FA;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06);
+      width: 100%;
+      max-width: 420px;
+      overflow: hidden;
+    }
+
+    /* ── Plan header ── */
+    .plan-header {
+      background: var(--green);
+      padding: 28px 28px 24px;
+      color: var(--white);
+    }
+
+    .plan-header .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      opacity: .75;
+      margin-bottom: 20px;
+    }
+
+    .plan-header .provider {
+      font-size: 13px;
+      opacity: .8;
+      margin-bottom: 4px;
+    }
+
+    .plan-header .plan-name {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .plan-header .amount-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .plan-header .currency {
+      font-size: 18px;
+      font-weight: 500;
+      opacity: .85;
+    }
+
+    .plan-header .amount {
+      font-size: 40px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .plan-header .freq {
+      font-size: 14px;
+      opacity: .75;
+      margin-left: 2px;
+    }
+
+    /* ── Loading / error states ── */
+    .state {
+      padding: 40px 28px;
+      text-align: center;
+      color: var(--grey);
+      font-size: 14px;
+    }
+
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Form ── */
+    .form-body {
+      padding: 28px;
+    }
+
+    .form-body h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--black);
+      margin-bottom: 6px;
+    }
+
+    .form-body p {
+      font-size: 13px;
+      color: var(--grey);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--black);
+      margin-bottom: 6px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--black);
+      outline: none;
+      transition: border-color .15s;
+      background: var(--white);
+    }
+
+    .field input:focus {
+      border-color: var(--green-mid);
+    }
+
+    .field input::placeholder { color: #B0B7C3; }
+
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--green);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background .15s, transform .1s;
+    }
+
+    .submit-btn:hover  { background: var(--green-mid); }
+    .submit-btn:active { transform: scale(.98); }
+    .submit-btn:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .error-msg {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--error);
+      display: none;
+    }
+
+    .footer-note {
+      text-align: center;
+      font-size: 12px;
+      color: var(--grey);
+      padding: 0 28px 24px;
+      line-height: 1.5;
+    }
+
+    .footer-note span {
+      color: var(--green);
+      font-weight: 500;
+    }
+
+    /* ── Success state ── */
+    .success-body {
+      padding: 48px 28px;
+      text-align: center;
+      display: none;
+    }
+
+    .success-icon {
+      width: 64px; height: 64px;
+      background: var(--green-bg);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 28px;
+    }
+
+    .success-body h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--black);
+      margin-bottom: 8px;
+    }
+
+    .success-body p {
+      font-size: 14px;
+      color: var(--grey);
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- Plan header — populated by JS -->
+  <div class="plan-header" id="planHeader" style="display:none">
+    <div class="logo">PayCycle</div>
+    <div class="provider" id="providerName"></div>
+    <div class="plan-name" id="planName"></div>
+    <div class="amount-row">
+      <span class="currency">₦</span>
+      <span class="amount" id="planAmount"></span>
+      <span class="freq" id="planFreq"></span>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="state" id="loadingState">
+    <div class="spinner"></div>
+    Loading plan details…
+  </div>
+
+  <!-- Error loading plan -->
+  <div class="state" id="errorState" style="display:none">
+    ❌ This plan link is invalid or has expired.
+  </div>
+
+  <!-- Form -->
+  <div id="formSection" style="display:none">
+    <div class="form-body">
+      <h2>Your details</h2>
+      <p>Fill in your information to subscribe. You'll be redirected to pay securely.</p>
+
+      <div class="field">
+        <label for="name">Full name</label>
+        <input type="text" id="name" placeholder="Chidi Obi" autocomplete="name" />
+      </div>
+
+      <div class="field">
+        <label for="email">Email address</label>
+        <input type="email" id="email" placeholder="chidi@example.com" autocomplete="email" />
+      </div>
+
+      <div class="field">
+        <label for="phone">Phone number</label>
+        <input type="tel" id="phone" placeholder="08012345678" autocomplete="tel" />
+      </div>
+
+      <button class="submit-btn" id="submitBtn" onclick="handleSubmit()">
+        Subscribe &amp; Pay
+      </button>
+
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <div class="footer-note">
+      🔒 Payments secured by <span>Nomba</span>. Your card details are never stored by PayCycle.
+    </div>
+  </div>
+
+  <!-- Success -->
+  <div class="success-body" id="successBody">
+    <div class="success-icon">✅</div>
+    <h2>You're all set!</h2>
+    <p>Payment received. Your subscription is now active. You can close this page.</p>
+  </div>
+
+</div>
+
+<script>
+  // Extract join token from URL path: /join/{token}
+  const pathParts = window.location.pathname.split('/');
+  const joinToken = pathParts[pathParts.length - 1];
+  const BASE_URL = window.location.origin;
+
+  // Load plan details on page load
+  async function loadPlan() {
+    try {
+      const res = await fetch(`${BASE_URL}/api/join/${joinToken}`);
+      if (!res.ok) throw new Error('Plan not found');
+      const plan = await res.json();
+
+      document.getElementById('providerName').textContent = plan.provider_name;
+      document.getElementById('planName').textContent = plan.plan_name;
+      document.getElementById('planAmount').textContent = Number(plan.amount).toLocaleString('en-NG');
+      document.getElementById('planFreq').textContent = `/ ${plan.billing_frequency}`;
+
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('planHeader').style.display = 'block';
+      document.getElementById('formSection').style.display = 'block';
+
+    } catch (err) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorState').style.display = 'block';
+    }
+  }
+
+  async function handleSubmit() {
+    const name  = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const errEl = document.getElementById('errorMsg');
+    const btn   = document.getElementById('submitBtn');
+
+    // Basic validation
+    if (!name || !email || !phone) {
+      showError('Please fill in all fields.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError('Please enter a valid email address.');
+      return;
+    }
+    if (!/^0[0-9]{10}$/.test(phone)) {
+      showError('Please enter a valid 11-digit Nigerian phone number.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Processing…';
+    errEl.style.display = 'none';
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/join/${joinToken}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, phone }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError(data.detail || 'Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Subscribe & Pay';
+        return;
+      }
+
+      // Redirect to Nomba checkout
+      window.location.href = data.checkout_url;
+
+    } catch (err) {
+      showError('Network error. Please check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = 'Subscribe & Pay';
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  // Allow Enter key to submit
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleSubmit();
+  });
+
+  loadPlan();
+</script>
+
+</body>
+</html>

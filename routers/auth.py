@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 import model, schemas, utils
 from core import security
 
-router = APIRouter(tags=["USERS"])
+router = APIRouter(prefix="/auth",tags=["USERS"])
 
 @router.post("/signup",status_code = status.HTTP_201_CREATED, response_model=schemas.UserOut)
 def sign_up(user: schemas.UserCreate, db:Session = Depends(get_db)):
@@ -42,4 +42,8 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
     access_token = security.create_access_token(data={"sub": str(existing_user.id)})
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me", response_model=schemas.UserOut)
+def get_current_user(current_user: schemas.UserOut = Depends(security.get_current_user)):
+    return current_user
 

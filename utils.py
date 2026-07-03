@@ -7,3 +7,13 @@ def hash(password: str) -> str:
 
 def verify_password(plain_password:str , hashed_password:str):
     return pwd_context.verify(plain_password,hashed_password)
+
+def to_kobo(naira: float) -> int:
+    """Convert Naira to kobo. ₦15,000 → 1500000"""
+    return int(naira * 100)
+
+
+def from_kobo(kobo: int) -> float:
+    """Convert kobo to Naira. 1500000 → ₦15,000.0"""
+    return kobo / 100
+
