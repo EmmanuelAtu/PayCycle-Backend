@@ -74,6 +74,7 @@ class NombaClient:
         self.client_id = settings.NOMBA_CLIENT_ID
         self.client_secret = settings.NOMBA_CLIENT_SECRET
         self.webhook_secret = settings.NOMBA_WEBHOOK_SECRET
+        self.sub_account_id = settings.NOMBA_SUB_ACCOUNT_ID
  
     # ------------------------------------------------------------------
     # Internal: get a valid token, fetching a new one if needed
@@ -184,6 +185,7 @@ class NombaClient:
                 "currency": "NGN",
                 "callbackUrl": callback_url,
                 "customerEmail": customer_email,
+                "subAccountId": self.sub_account_id,
             }
         }
  
@@ -229,7 +231,7 @@ class NombaClient:
  
         data = await self._request(
             "POST",
-            "/tokenized-card/charge",
+            "/checkout/tokenized-card-payment",
             json={
                 "amount": amount,   # ← kobo conversion here
                 "currency": "NGN",
