@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import model
 from database import engine
 from routers import auth , plans, customer,suscription,webhook,dashboard, join
-
+import httpx
+from services.nomba_client import nomba
+from core.config import settings
 model.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -38,6 +40,28 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": exc.errors(), "body": body.decode()},
     )
 
+@app.get("/debug/check-webhooks")
+async def check_webhooks():
+    try:
+        token = await nomba._get_token()
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"https://api.nomba.com/v1/webhooks/event-logs",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "accountId": "f666ef9b-888e-4799-85ce-acb505b28023",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "coreUserId": settings.NOMBA_SUB_ACCOUNT_ID,
+                    "eventType": "payment_success"
+                },
+                timeout=15.0
+            )
+        return response.json()
+    except Exception as e:
+        return {"error": str(e)}
+    
 app.include_router(auth.router)   
 app.include_router(plans.router)
 app.include_router(customer.router)
