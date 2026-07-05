@@ -40,6 +40,23 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": exc.errors(), "body": body.decode()},
     )
 
+@app.get("/debug/check-order/{order_ref}")
+async def check_order(order_ref: str):
+    try:
+        token = await nomba._get_token()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.nomba.com/v1/checkout/order/{order_ref}",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "accountId": "f666ef9b-888e-4799-85ce-acb505b28023",
+                },
+                timeout=15.0
+            )
+        return response.json()
+    except Exception as e:
+        return {"error": str(e)}
+    
 @app.get("/debug/check-webhooks")
 async def check_webhooks():
     try:
