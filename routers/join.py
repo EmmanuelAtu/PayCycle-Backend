@@ -129,6 +129,9 @@ async def join_plan(
             customer_name=customer.name,
             order_ref=tx_ref,
         )
+        # After getting checkout_data, store Nomba's actual reference
+        new_sub.checkout_reference = checkout_data["orderReference"]  # ← use Nomba's ref
+        db.commit()
     except Exception as e:
         new_sub.status = model.SubscriptionStatus.cancelled
         db.commit()

@@ -11,6 +11,11 @@ logger = logging.getLogger("paycycle.webhook")
 
 router = APIRouter(tags=["WEBHOOKS"])
 
+@router.get("/webhooks/nomba", status_code=200)
+def webhook_verification():
+    """Nomba GET ping to verify endpoint is alive"""
+    return {"status": "ok"}
+
 
 @router.post("/webhooks/nomba", status_code=200)
 async def nomba_webhook(request: Request, db: Session = Depends(get_db)):
