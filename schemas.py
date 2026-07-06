@@ -124,3 +124,21 @@ class SubscriberOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+from model import WalletTransactionType
+
+class WalletOut(BaseModel):
+    id: int
+    balance: int
+    class Config:
+        from_attributes = True
+
+class WalletLedgerOut(BaseModel):
+    id: int
+    amount: int
+    type: WalletTransactionType
+    reference: Optional[str] = None
+    description: Optional[str] = None
+    created_at: datetime
+    class Config:
+        from_attributes = True        

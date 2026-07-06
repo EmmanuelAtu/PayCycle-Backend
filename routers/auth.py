@@ -23,6 +23,9 @@ def sign_up(user: schemas.UserCreate, db:Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    wallet = model.Wallet(provider_id=new_user.id, balance=0)
+    db.add(wallet)
+    db.commit()
 
     return new_user
 

@@ -47,6 +47,7 @@ class User(Base, CommonMixin):
     #for hackathon using sqlite
     #created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     plans = relationship("Plan",back_populates="provider", cascade="all, delete-orphan")
+    wallet = relationship("Wallet", back_populates="provider", uselist=False, cascade="all, delete-orphan")
 
 class Plan(Base, CommonMixin):
     """Billing Plans offered by Providers"""
@@ -115,3 +116,31 @@ class ProcessedEvent(Base):
 
     event_id = Column(String, primary_key=True)
     processed_at = Column(DateTime(timezone=True), server_default=func.now())    
+
+class WalletTransactionType(str, enum.Enum):
+    credit = "credit"
+    debit = "debit"
+
+class Wallet(Base, CommonMixin):
+    __tablename__ = "wallets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    provider_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    balance = Column(Integer, nullable=False, default=0)  # kobo
+
+    provider = relationship("User", back_populates="wallet")
+    ledger = relationship("WalletLedger", back_populates="wallet", cascade="all, delete-orphan")
+
+
+class WalletLedger(Base, CommonMixin):
+    """Audit trail of wallet credits/debits"""
+    __tablename__ = "wallet_ledger"
+
+    id = Column(Integer, primary_key=True, index=True)
+    wallet_id = Column(Integer, ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False)
+    amount = Column(Integer, nullable=False)  # kobo, always positive
+    type = Column(Enum(WalletTransactionType), nullable=False)
+    reference = Column(String, nullable=True)  # e.g. transaction.reference that triggered this
+    description = Column(String, nullable=True)
+
+    wallet = relationship("Wallet", back_populates="ledger")

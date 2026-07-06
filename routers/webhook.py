@@ -156,6 +156,7 @@ async def _handle_payment_success(data: dict, db: Session):
             reference=order_reference,
         )
         db.add(transaction)
+        _credit_wallet(db, subscription, transaction)
         db.commit()
 
         logger.info(
@@ -245,3 +246,29 @@ def _next_billing_date(frequency: model.BillingFrequency) -> datetime:
     elif frequency == model.BillingFrequency.yearly:
         return now + timedelta(days=365)
     return now + timedelta(days=30)   # safe default
+
+
+# ---------------------------------------------------------------------------
+# Helper: credit provider wallet after successful payment
+# ---------------------------------------------------------------------------
+def _credit_wallet(db: Session, subscription: model.Subscription, transaction: model.Transaction):
+    provider_id = subscription.plan.provider_id
+
+    wallet = db.query(model.Wallet).filter(
+        model.Wallet.provider_id == provider_id
+    ).first()
+
+    if not wallet:
+        wallet = model.Wallet(provider_id=provider_id, balance=0)
+        db.add(wallet)
+        db.flush()
+
+    wallet.balance += transaction.amount
+    db.add(model.WalletLedger(
+        wallet_id=wallet.id,
+        amount=transaction.amount,
+        type=model.WalletTransactionType.credit,
+        reference=transaction.reference,
+        description=f"Payment for subscription #{subscription.id}",
+    ))
+    db.commit()
