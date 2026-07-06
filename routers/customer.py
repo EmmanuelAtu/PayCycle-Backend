@@ -95,3 +95,21 @@ def deactivate_customer(
 
     customer.is_active = False
     db.commit()
+
+@router.get("/customers/{phone}/subscriptions", response_model=list[schemas.SubscriberOut])
+def get_customer_subscriptions(
+    phone: str,
+    db: Session = Depends(get_db)
+):
+    customer = db.query(model.Customer).filter(
+        model.Customer.phone == phone
+    ).first()
+
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    subscriptions = db.query(model.Subscription).filter(
+        model.Subscription.customer_id == customer.id
+    ).order_by(model.Subscription.created_at.desc()).all()
+
+    return subscriptions
