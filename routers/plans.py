@@ -95,3 +95,26 @@ def update_plan(
     db.commit()
     db.refresh(existing_plan)
     return existing_plan
+
+@router.get("/plans/{plan_id}/subscriptions", response_model=list[schemas.SubscriberOut])
+def all_subscriptions(
+    plan_id: int,
+    db: Session = Depends(get_db),
+    current_user: model.User = Depends(security.get_current_user)
+):
+    plan = db.query(model.Plan).filter(
+        model.Plan.id == plan_id,
+        model.Plan.provider_id == current_user.id,
+    ).first()
+
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    subscribers = db.query(model.Subscription).join(
+        model.Plan, model.Subscription.plan_id == model.Plan.id
+    ).filter(
+        model.Plan.id == plan_id,
+        model.Plan.provider_id == current_user.id,
+    ).all()
+
+    return subscribers

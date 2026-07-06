@@ -113,3 +113,14 @@ class JoinResponse(BaseModel):
     message: str
     checkout_url: str
     checkout_reference: str
+
+
+class SubscriberOut(BaseModel):
+    id: int
+    customer: CustomerOut
+    plan_id: int
+    status: SubscriptionStatus
+    next_billing_date: datetime
+
+    class Config:
+        from_attributes = True

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+from backend.core import security
 from database import get_db
 from core.config import settings
 from services.nomba_client import nomba
