@@ -28,15 +28,36 @@ def create_plan(
     return new_plan
 
 
-@router.get("/plans", response_model=list[schemas.PlanOut])
+from sqlalchemy import func
+
+@router.get("/plans")
 def get_plans(
     db: Session = Depends(get_db),
     current_user: model.User = Depends(security.get_current_user)
 ):
-    return db.query(model.Plan).filter(
+    # Perform a join to count active subscriptions per plan
+    results = db.query(
+        model.Plan, 
+        func.count(model.Subscription.id).label('subscriber_count')
+    ).outerjoin(
+        model.Subscription, 
+        (model.Subscription.plan_id == model.Plan.id) & 
+        (model.Subscription.status == model.SubscriptionStatus.active)
+    ).filter(
         model.Plan.provider_id == current_user.id,
         model.Plan.is_active == True
-    ).all()
+    ).group_by(model.Plan.id).all()
+
+    # Inject the count into the response dictionary
+    formatted_plans = []
+    for plan, count in results:
+        plan_dict = plan.__dict__.copy()
+        # Ensure this key matches whatever your schemas.PlanOut expects 
+        # (e.g., 'subscribers', 'subscriber_count', etc.)
+        plan_dict["subscribers"] = count 
+        formatted_plans.append(plan_dict)
+
+    return formatted_plans
 
 
 @router.get("/plans/{plan_id}", response_model=schemas.PlanOut)

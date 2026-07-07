@@ -94,15 +94,20 @@ async def join_plan(
  
     # 3. Prevent duplicate active subscriptions
     # CORRECT — only block if already active
+    # 3. Prevent duplicate subscriptions
     existing = db.query(model.Subscription).filter(
         model.Subscription.customer_id == customer.id,
         model.Subscription.plan_id == plan.id,
-        model.Subscription.status == model.SubscriptionStatus.active,
+        model.Subscription.status.in_([model.SubscriptionStatus.active, model.SubscriptionStatus.pending]),
         model.Subscription.is_active == True,
     ).first()
  
     if existing:
-        raise HTTPException(status_code=400, detail="You are already subscribed to this plan")
+        if existing.status == model.SubscriptionStatus.active:
+            raise HTTPException(status_code=400, detail="You are already subscribed to this plan")
+        else:
+            # If pending, you can either return the old checkout link or just block them.
+            raise HTTPException(status_code=400, detail="You already have a pending payment for this plan. Please complete it.")
  
     # 4. Create pending subscription
     new_sub = model.Subscription(
@@ -175,15 +180,17 @@ async def payment_return(orderReference: str = None, db: Session = Depends(get_d
 
             if status == "COMPLETED" or status == "SUCCESS":
                 # Find subscription by checkout_reference
-                subscription = db.query(model.Subscription).filter(
+                # Ensure you join the Plan so you know who to pay!
+                subscription = db.query(model.Subscription).join(model.Plan).filter(
                     model.Subscription.checkout_reference == orderReference
                 ).first()
 
                 if subscription and subscription.status == model.SubscriptionStatus.pending:
+                    # 1. Activate Subscription
                     subscription.status = model.SubscriptionStatus.active
                     subscription.next_billing_date = datetime.utcnow() + timedelta(days=30)
 
-                    # Record transaction
+                    # 2. Record Transaction
                     transaction = model.Transaction(
                         subscription_id=subscription.id,
                         amount=order_data.get("amount", 0),
@@ -191,8 +198,32 @@ async def payment_return(orderReference: str = None, db: Session = Depends(get_d
                         reference=orderReference,
                     )
                     db.add(transaction)
-                    db.commit()
 
+                    # 3. UPDATE THE WALLET
+                    plan_owner_id = subscription.plan.provider_id
+                    wallet = db.query(model.Wallet).filter(
+                        model.Wallet.provider_id == plan_owner_id
+                    ).first()
+
+                    # Create wallet if it somehow doesn't exist
+                    if not wallet:
+                        wallet = model.Wallet(provider_id=plan_owner_id, balance=0)
+                        db.add(wallet)
+                        db.flush() # Flush to get the wallet.id
+
+                    payment_amount = order_data.get("amount", 0)
+                    wallet.balance += payment_amount
+
+                    # 4. Create Ledger Entry (so it shows in the app history)
+                    ledger_entry = model.WalletLedger(
+                        wallet_id=wallet.id,
+                        amount=payment_amount,
+                        transaction_type="credit", 
+                        description=f"Subscription payment for {subscription.plan.name}"
+                    )
+                    db.add(ledger_entry)
+
+                    db.commit()
         except Exception as e:
             print(f"Payment return polling error: {e}")
 
