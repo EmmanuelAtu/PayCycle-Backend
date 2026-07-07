@@ -52,7 +52,7 @@ def get_plan_by_token(join_token: str, db: Session = Depends(get_db)):
     return {
         "plan_id": plan.id,
         "plan_name": plan.name,
-        "amount": plan.amount / 100,
+        "amount": plan.amount,
         "billing_frequency": plan.billing_frequency,
         "provider_name": plan.provider.name,
     }
