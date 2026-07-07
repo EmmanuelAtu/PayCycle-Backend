@@ -123,7 +123,7 @@ async def join_plan(
     # 6. Call Nomba
     try:
         checkout_data = await nomba.create_checkout(
-            amount=plan.amount / 100,
+            amount=plan.amount,
             customer_email=customer.email,
             subscription_id=str(new_sub.id),
             callback_url=f"{settings.APP_URL}/payment/return?orderReference={tx_ref}",
