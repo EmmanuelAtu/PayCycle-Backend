@@ -109,46 +109,29 @@ async def _handle_payment_success(data: dict, db: Session):
     order_reference = data.get("orderReference") or data.get("merchantTxRef")
     amount_kobo = data.get("amount", 0)
 
-    # Extract card token if present (only on first-time checkout)
     card = data.get("card", {})
     token_key = card.get("token") or card.get("cardToken")
     last_four = card.get("last4") or card.get("lastFour")
     nomba_customer_id = data.get("customerId")
 
-    logger.info(
-        f"webhook | payment_success",
-        extra={"order_reference": order_reference, "amount_kobo": amount_kobo},
-    )
-
     if not order_reference:
-        logger.error("webhook | payment_success missing orderReference")
+        logger.error("webhook | missing orderReference")
         return
 
-    # ------------------------------------------------------------------
-    # Case A: First-time checkout — reference starts with "ord_"
-    # Find subscription by checkout_reference, store token, activate
-    # ------------------------------------------------------------------
-    if order_reference.startswith("ord_"):
-        subscription = db.query(model.Subscription).filter(
-            model.Subscription.checkout_reference == order_reference
-        ).first()
+    # Try finding as a first-time checkout
+    subscription = db.query(model.Subscription).filter(
+        model.Subscription.checkout_reference == order_reference
+    ).first()
 
-        if not subscription:
-            logger.error(f"webhook | no subscription found for ref: {order_reference}")
-            return
-
-        # Store the tokenized card — this is what enables recurring billing
+    if subscription:
+        # First time checkout — activate
         subscription.token_key = token_key
         subscription.last_four = last_four
         subscription.nomba_customer_id = nomba_customer_id
         subscription.status = model.SubscriptionStatus.active
-
-        # Set next billing date based on plan frequency
         subscription.next_billing_date = _next_billing_date(
             subscription.plan.billing_frequency
         )
-
-        # Record transaction
         transaction = model.Transaction(
             subscription_id=subscription.id,
             amount=amount_kobo,
@@ -156,41 +139,24 @@ async def _handle_payment_success(data: dict, db: Session):
             reference=order_reference,
         )
         db.add(transaction)
-        _credit_wallet(db, subscription, transaction)
         db.commit()
+        logger.info(f"webhook | subscription activated: {subscription.id}")
+        return
 
-        logger.info(
-            f"webhook | subscription activated",
-            extra={"subscription_id": subscription.id, "last_four": last_four},
-        )
+    # Try finding as a recurring charge
+    transaction = db.query(model.Transaction).filter(
+        model.Transaction.reference == order_reference
+    ).first()
 
-    # ------------------------------------------------------------------
-    # Case B: Recurring charge success — reference starts with "sub_"
-    # Find transaction by reference, mark it success
-    # ------------------------------------------------------------------
-    elif order_reference.startswith("sub_"):
-        transaction = db.query(model.Transaction).filter(
-            model.Transaction.reference == order_reference
-        ).first()
-
-        if not transaction:
-            logger.error(f"webhook | no transaction found for ref: {order_reference}")
-            return
-
+    if transaction:
         transaction.status = model.TransactionStatus.success
         transaction.subscription.status = model.SubscriptionStatus.active
         transaction.subscription.last_charged_at = datetime.utcnow()
         transaction.subscription.next_billing_date = _next_billing_date(
             transaction.subscription.plan.billing_frequency
         )
-
         db.commit()
-
-        logger.info(
-            f"webhook | recurring charge confirmed",
-            extra={"reference": order_reference},
-        )
-
+        logger.info(f"webhook | recurring charge confirmed: {order_reference}")
 
 # ---------------------------------------------------------------------------
 # Handler: charge.failed

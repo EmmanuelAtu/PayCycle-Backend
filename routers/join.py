@@ -9,7 +9,7 @@ from services.nomba_client import nomba
 from pydantic import BaseModel, EmailStr
 import model, schemas
 import secrets
-import static
+import httpx
 import os
 import time
 
@@ -126,13 +126,15 @@ async def join_plan(
             amount=plan.amount / 100,
             customer_email=customer.email,
             subscription_id=str(new_sub.id),
-            callback_url=f"{settings.APP_URL}/payment/return",
+            callbackUrl=f"{settings.APP_URL}/payment/return?orderReference={tx_ref}",
             customer_name=customer.name,
             order_ref=tx_ref,
         )
         # After getting checkout_data, store Nomba's actual reference
-        new_sub.checkout_reference = checkout_data["orderReference"]  # ← use Nomba's ref
+        nomba_ref = checkout_data["orderReference"]
+        new_sub.checkout_reference = nomba_ref
         db.commit()
+
     except Exception as e:
         new_sub.status = model.SubscriptionStatus.cancelled
         db.commit()
@@ -141,7 +143,7 @@ async def join_plan(
     return {
         "message": "Redirecting to payment",
         "checkout_url": checkout_data["checkoutLink"],
-        "checkout_reference": tx_ref,
+        "checkout_reference": nomba_ref,
     }
  
  
@@ -149,14 +151,61 @@ async def join_plan(
 # GET /payment/return  — Nomba redirects here after checkout
 # ---------------------------------------------------------------------------
 @router.get("/payment/return", response_class=HTMLResponse)
-def payment_return():
+async def payment_return(orderReference: str = None, db: Session = Depends(get_db)):
+    """
+    Nomba redirects here after checkout with orderReference as query param.
+    We poll Nomba to confirm payment and activate the subscription.
+    """
+    if orderReference:
+        try:
+            # Check order status directly from Nomba
+            token = await nomba._get_token()
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://api.nomba.com/v1/checkout/order/{orderReference}",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "accountId": "f666ef9b-888e-4799-85ce-acb505b28023",
+                    },
+                    timeout=15.0
+                )
+            data = response.json()
+            order_data = data.get("data", {})
+            status = order_data.get("status", "")
+
+            if status == "COMPLETED" or status == "SUCCESS":
+                # Find subscription by checkout_reference
+                subscription = db.query(model.Subscription).filter(
+                    model.Subscription.checkout_reference == orderReference
+                ).first()
+
+                if subscription and subscription.status == model.SubscriptionStatus.pending:
+                    subscription.status = model.SubscriptionStatus.active
+                    subscription.next_billing_date = datetime.utcnow() + timedelta(days=30)
+
+                    # Record transaction
+                    transaction = model.Transaction(
+                        subscription_id=subscription.id,
+                        amount=order_data.get("amount", 0),
+                        status=model.TransactionStatus.success,
+                        reference=orderReference,
+                    )
+                    db.add(transaction)
+                    db.commit()
+
+        except Exception as e:
+            print(f"Payment return polling error: {e}")
+
     return HTMLResponse(content="""
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-          body { font-family: sans-serif; text-align: center; padding: 60px 20px; background: #F6F8FA; }
-          .card { background: white; border-radius: 16px; padding: 48px 32px; max-width: 380px; margin: 0 auto; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
+          body { font-family: sans-serif; text-align: center; 
+                 padding: 60px 20px; background: #F6F8FA; }
+          .card { background: white; border-radius: 16px; 
+                  padding: 48px 32px; max-width: 380px; 
+                  margin: 0 auto; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
           h2 { color: #0A6E4A; margin-bottom: 12px; }
           p { color: #6B7280; font-size: 15px; line-height: 1.6; }
         </style>
@@ -165,9 +214,8 @@ def payment_return():
         <div class="card">
           <div style="font-size:48px;margin-bottom:16px">✅</div>
           <h2>Payment received!</h2>
-          <p>Your subscription is being activated. You can close this page.</p>
+          <p>Your subscription is now active. You can close this page.</p>
         </div>
       </body>
     </html>
     """)
- 
