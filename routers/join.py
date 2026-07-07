@@ -126,7 +126,7 @@ async def join_plan(
             amount=plan.amount / 100,
             customer_email=customer.email,
             subscription_id=str(new_sub.id),
-            callbackUrl=f"{settings.APP_URL}/payment/return?orderReference={tx_ref}",
+            callbackurl=f"{settings.APP_URL}/payment/return?orderReference={tx_ref}",
             customer_name=customer.name,
             order_ref=tx_ref,
         )
